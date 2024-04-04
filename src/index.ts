@@ -8,9 +8,14 @@ import { Page } from './components/Page';
 import { AppState } from './components/AppState';
 import { StoreAPI } from './components/StoreAPI';
 import { Card } from './components/Card';
+import { Modal } from './components/common/Modal';
+import { IProduct } from './types';
+import { Basket } from './components/Basket';
 
 // Все шаблоны
 const cardCatalogTemplate = ensureElement<HTMLTemplateElement>('#card-catalog');
+const cardPreviewTemplate = ensureElement<HTMLTemplateElement>('#card-preview');
+const basketTemplate = ensureElement<HTMLTemplateElement>('#basket');
 
 const events = new EventEmitter();
 const api = new StoreAPI(CDN_URL, API_URL);
@@ -25,6 +30,10 @@ const appData = new AppState({}, events);
 
 // Глобальные контейнеры
 const page = new Page(document.body, events);
+const modal = new Modal(ensureElement<HTMLElement>('#modal-container'), events);
+
+// Переиспользуемые части интерфейса
+const basket = new Basket('basket', cloneTemplate(basketTemplate), events);
 
 // Получаем товары с сервера
 api
@@ -49,4 +58,37 @@ events.on('catalog:changed', () => {
 			price: item.price,
 		});
 	});
+});
+
+// Открытие попапа с товаром
+events.on('card:select', (item: IProduct) => {
+	const card = new Card('card', cloneTemplate(cardPreviewTemplate));
+
+	return modal.render({
+		content: card.render({
+			id: item.id,
+			category: item.category,
+			title: item.title,
+			image: item.image,
+			price: item.price,
+			description: item.description,
+		}),
+	});
+});
+
+// Открытие попапа корзины
+events.on('basket:open', () => {
+	return modal.render({
+		content: basket.render(),
+	});
+});
+
+// Блокируем прокрутку при открытии попапа
+events.on('modal:open', () => {
+    page.locked = true;
+});
+
+// Разблокируем прокрутку при закрытии попапа
+events.on('modal:close', () => {
+    page.locked = false;
 });

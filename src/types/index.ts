@@ -6,7 +6,8 @@ export interface IProduct {
 	category: string;
 	price: number | null;
 	description: string;
-	selected: boolean; // Товар в корзине
+	index: number;
+	isselected: boolean; // Товар в корзине
 }
 
 // Интерфейс описывающий страницу
