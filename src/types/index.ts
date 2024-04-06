@@ -7,7 +7,7 @@ export interface IProduct {
 	price: number | null;
 	description: string;
 	index: number;
-	isselected: boolean; // Товар в корзине
+	inBasket: boolean; // Товар в корзине
 }
 
 // Интерфейс описывающий страницу

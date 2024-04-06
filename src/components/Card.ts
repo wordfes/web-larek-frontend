@@ -79,4 +79,16 @@ export class Card extends Component<IProduct> {
 	set index(value: number) {
 		this.setText(this._index, value);
 	}
+
+	set inBasket(value: boolean) {
+		this.updateButton(value);
+	}
+
+	updateButton(inBasket: boolean) {
+		if (inBasket) {
+			this.setText(this._button, 'Удалить');
+		} else {
+			this.setText(this._button, 'В корзину');
+		}
+	}
 }

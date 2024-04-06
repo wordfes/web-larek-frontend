@@ -16,6 +16,7 @@ import { Basket } from './components/Basket';
 const cardCatalogTemplate = ensureElement<HTMLTemplateElement>('#card-catalog');
 const cardPreviewTemplate = ensureElement<HTMLTemplateElement>('#card-preview');
 const basketTemplate = ensureElement<HTMLTemplateElement>('#basket');
+const cardBasketTemplate = ensureElement<HTMLTemplateElement>('#card-basket');
 
 const events = new EventEmitter();
 const api = new StoreAPI(CDN_URL, API_URL);
@@ -62,7 +63,16 @@ events.on('catalog:changed', () => {
 
 // Открытие попапа с товаром
 events.on('card:select', (item: IProduct) => {
-	const card = new Card('card', cloneTemplate(cardPreviewTemplate));
+	const card = new Card('card', cloneTemplate(cardPreviewTemplate), {
+		onClick: () => {
+			if (item.inBasket) {
+				events.emit('basket:remove', item);
+			} else {
+				events.emit('basket:add', item);
+			}
+			card.updateButton(item.inBasket);
+		},
+	});
 
 	return modal.render({
 		content: card.render({
@@ -72,14 +82,68 @@ events.on('card:select', (item: IProduct) => {
 			image: item.image,
 			price: item.price,
 			description: item.description,
+			inBasket: item.inBasket,
+		}),
+	});
+});
+
+// Добавление товара в корзину
+events.on('basket:add', (item: IProduct) => {
+	appData.addToBasket(item);
+	item.inBasket = true;
+	basket.total = appData.getTotalBasket();
+	page.counter = appData.getCountBasket();
+});
+
+// Удаление товара из корзины
+events.on('basket:remove', (item: IProduct) => {
+	appData.removeFromBasket(item);
+	item.inBasket = false;
+	basket.total = appData.getTotalBasket();
+	page.counter = appData.getCountBasket();
+	const basketItems = appData.basket.map((item, index) => {
+		const card = new Card('card', cloneTemplate(cardBasketTemplate), {
+			onClick: () => {
+				events.emit('basket:remove', item);
+			},
+		});
+
+		return card.render({
+			title: item.title,
+			price: item.price,
+			index: index + 1,
+		});
+	});
+
+	return modal.render({
+		content: basket.render({
+			items: basketItems,
+			total: appData.getTotalBasket(),
 		}),
 	});
 });
 
 // Открытие попапа корзины
 events.on('basket:open', () => {
+	const basketItems = appData.basket.map((item, index) => {
+		const card = new Card('card', cloneTemplate(cardBasketTemplate), {
+			onClick: () => {
+				events.emit('basket:remove', item);
+			},
+		});
+
+		return card.render({
+			title: item.title,
+			price: item.price,
+			index: index + 1,
+		});
+	});
+
 	return modal.render({
-		content: basket.render(),
+		content: basket.render({
+			items: basketItems,
+			total: appData.getTotalBasket(),
+		}),
 	});
 });
 
