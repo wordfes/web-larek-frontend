@@ -1,9 +1,10 @@
 import {Api, ApiListResponse} from './base/api';
-import {IProduct} from '../types';
+import {IProduct, IOrder} from '../types';
 
 interface IStoreAPI {
 	getProduct: (id: string) => Promise<IProduct>;
 	getProducts: () => Promise<IProduct[]>;
+	sendOrder: (order: IOrder) => Promise<IOrder>;
 }
 
 export class StoreAPI extends Api implements IStoreAPI {
@@ -30,5 +31,10 @@ export class StoreAPI extends Api implements IStoreAPI {
 			...item,
 			image: this.cdn + item.image,
 		}));
+	}
+
+	// Отправка заказа
+	sendOrder(order: IOrder): Promise<IOrder> {
+		return this.post(`/order/`, order).then((data: IOrder) => data);
 	}
 }

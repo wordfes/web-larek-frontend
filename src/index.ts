@@ -4,19 +4,25 @@ import { API_URL, CDN_URL } from './utils/constants';
 import { ensureElement, cloneTemplate } from './utils/utils';
 import { EventEmitter } from './components/base/events';
 import { Page } from './components/Page';
+import { Modal } from './components/common/Modal';
 
 import { AppState } from './components/AppState';
 import { StoreAPI } from './components/StoreAPI';
 import { Card } from './components/Card';
-import { Modal } from './components/common/Modal';
-import { IProduct } from './types';
+import { IProduct, IOrderForm, IContactForm, IOrderValidate, IOrder } from './types';
 import { Basket } from './components/Basket';
+import { OrderForm } from './components/OrderForm';
+import { ContactsForm } from './components/ContactsForm';
+import { Success } from './components/Success';
 
 // Все шаблоны
 const cardCatalogTemplate = ensureElement<HTMLTemplateElement>('#card-catalog');
 const cardPreviewTemplate = ensureElement<HTMLTemplateElement>('#card-preview');
 const basketTemplate = ensureElement<HTMLTemplateElement>('#basket');
 const cardBasketTemplate = ensureElement<HTMLTemplateElement>('#card-basket');
+const orderFormTemplate = ensureElement<HTMLTemplateElement>('#order');
+const contactsFormTemplate = ensureElement<HTMLTemplateElement>('#contacts');
+const successTemplate = ensureElement<HTMLTemplateElement>('#success');
 
 const events = new EventEmitter();
 const api = new StoreAPI(CDN_URL, API_URL);
@@ -35,6 +41,9 @@ const modal = new Modal(ensureElement<HTMLElement>('#modal-container'), events);
 
 // Переиспользуемые части интерфейса
 const basket = new Basket('basket', cloneTemplate(basketTemplate), events);
+const orderForm = new OrderForm('order', cloneTemplate(orderFormTemplate), events);
+const contactsForm = new ContactsForm(cloneTemplate(contactsFormTemplate), events);
+const success = new Success('order-success', cloneTemplate(successTemplate), {onClick: () => modal.close()});
 
 // Получаем товары с сервера
 api
@@ -52,7 +61,6 @@ events.on('catalog:changed', () => {
 		});
 
 		return card.render({
-			id: item.id,
 			category: item.category,
 			title: item.title,
 			image: item.image,
@@ -71,12 +79,12 @@ events.on('card:select', (item: IProduct) => {
 				events.emit('basket:add', item);
 			}
 			card.updateButton(item.inBasket);
+			modal.close();
 		},
 	});
 
 	return modal.render({
 		content: card.render({
-			id: item.id,
 			category: item.category,
 			title: item.title,
 			image: item.image,
@@ -101,7 +109,7 @@ events.on('basket:remove', (item: IProduct) => {
 	item.inBasket = false;
 	basket.total = appData.getTotalBasket();
 	page.counter = appData.getCountBasket();
-	const basketItems = appData.basket.map((item, index) => {
+	basket.items = appData.basket.map((item, index) => {
 		const card = new Card('card', cloneTemplate(cardBasketTemplate), {
 			onClick: () => {
 				events.emit('basket:remove', item);
@@ -117,7 +125,6 @@ events.on('basket:remove', (item: IProduct) => {
 
 	return modal.render({
 		content: basket.render({
-			items: basketItems,
 			total: appData.getTotalBasket(),
 		}),
 	});
@@ -125,7 +132,7 @@ events.on('basket:remove', (item: IProduct) => {
 
 // Открытие попапа корзины
 events.on('basket:open', () => {
-	const basketItems = appData.basket.map((item, index) => {
+	basket.items = appData.basket.map((item, index) => {
 		const card = new Card('card', cloneTemplate(cardBasketTemplate), {
 			onClick: () => {
 				events.emit('basket:remove', item);
@@ -141,10 +148,76 @@ events.on('basket:open', () => {
 
 	return modal.render({
 		content: basket.render({
-			items: basketItems,
 			total: appData.getTotalBasket(),
 		}),
 	});
+});
+
+// Открытие попапа с формой заказа
+events.on('order:open', () => {
+	modal.render({
+		content: orderForm.render({
+			address: '',
+			payment: '',
+			valid: false,
+			errors: [],
+		}),
+	});
+});
+
+// Изменилось поле заказа или контактов
+events.on(
+	'orderInput:change',
+	(data: { field: keyof IOrderValidate; value: string }) => {
+		appData.setOrderFields(data.field, data.value);
+	}
+);
+
+// Валидация формы заказа
+events.on('orderFormErrors:change', (errors: Partial<IOrderForm>) => {
+	const { payment, address } = errors;
+	orderForm.valid = !payment && !address;
+	orderForm.errors = Object.values({payment, address}).filter((i) => !!i).join('; ');
+});
+
+// Открытие попапа с формой контактов
+events.on('order:submit', () => {
+	appData.order.total = appData.getTotalBasket();
+	appData.order.items = appData.basket.map((item) => item.id);
+
+	modal.render({
+		content: contactsForm.render({
+			valid: false,
+			errors: [],
+		}),
+	});
+});
+
+// Валидация формы контактов
+events.on('contactsFormErrors:change', (errors: Partial<IContactForm>) => {
+	const { email, phone } = errors;
+	contactsForm.valid = !email && !phone;
+	contactsForm.errors = Object.values({phone, email}).filter((i) => !!i).join('; ');
+});
+
+// Открытие попапа успешной оплаты и отправка данных заказа
+events.on('contacts:submit', () => {
+	api
+		.sendOrder(appData.order)
+		.then(() => {
+			modal.render({
+				content: success.render({
+					total: appData.getTotalBasket(),
+				}),
+			});
+
+			appData.clearBasket();
+			appData.clearOrder();
+			page.counter = 0;
+		})
+		.catch(err => {
+			console.error(err);
+		});
 });
 
 // Блокируем прокрутку при открытии попапа
