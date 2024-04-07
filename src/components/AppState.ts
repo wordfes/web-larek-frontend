@@ -6,9 +6,9 @@ export class AppState extends Model<IAppState> {
 	basket: IProduct[] = [];
 	order: IOrder = {
 		payment: '',
+		address: '',
 		email: '',
 		phone: '',
-		address: '',
 		total: 0,
 		items: [],
 	};
@@ -108,6 +108,10 @@ export class AppState extends Model<IAppState> {
 
 	// Очистка заказа
 	clearOrder() {
+		this.order.payment = '';
+		this.order.address = '';
+		this.order.email = '';
+		this.order.phone = '';
 		this.order.total = 0;
 		this.order.items = [];
 	}
