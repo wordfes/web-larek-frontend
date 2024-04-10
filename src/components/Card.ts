@@ -21,7 +21,7 @@ export class Card extends Component<IProduct> {
 		this._title = container.querySelector(`.${blockName}__title`);
 		this._category = container.querySelector(`.${blockName}__category`);
 		this._price = container.querySelector(`.${blockName}__price`);
-		this._description = container.querySelector(`.${blockName}__description`);
+		this._description = container.querySelector(`.${blockName}__text`);
 		this._button = container.querySelector(`.${blockName}__button`);
 		this._index = container.querySelector('.basket__item-index');
 

@@ -213,6 +213,7 @@ events.on('contacts:submit', () => {
 
 			appData.clearBasket();
 			appData.clearOrder();
+			orderForm.clearButtons();
 			page.counter = 0;
 		})
 		.catch(err => {
